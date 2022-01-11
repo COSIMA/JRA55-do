@@ -89,22 +89,22 @@ subroutine bulk_shift(tmptrg,sphtrg, &
 
   integer(4) :: m
   !
-  ! 入力（単位に注意！  用意するデータの単位を変更するか、
-  !                     このサブルーチンで変更すること）
+  ! 入力（単位に注意！  用意するデータの単位を変更するか、Input (Be careful of the unit! Change the unit of the prepared data
+  !                     このサブルーチンで変更すること）or change it with this subroutine.)
   !     TBL     :  Model SST [degC]
   !     SAT,SATA:  Observed Air Temperature [degC]
   !     DWT,DWTA:  Observed Specific Humidity [g/g]
   !     WDV,WDVA:  Observed Wind Speed [cm/s]
   !     SLP,SLPA:  Observed sea level pressure [hPa]
-  ! 出力
-  !     QSN     :  Sensible Heat Flux [g/s3] （W/m2での1000倍の値）
-  !     QLA     :  Latent Heat Flux   [g/s3] （W/m2での1000倍の値）
+  ! 出力 output
+  !     QSN     :  Sensible Heat Flux [g/s3] （W/m2での1000倍の値）(1000 times the value in W / m2)
+  !     QLA     :  Latent Heat Flux   [g/s3] （W/m2での1000倍の値）(1000 times the value in W / m2)
   !
-  !       ES : 飽和水蒸気圧 (hPa) (!! MKS !!)
-  !       QS : 海面における飽和比湿 (g/kg)
-  !       WV : 海上風速 (cm/s)
-  !       CDN,CEN: バルク係数（無次元）
-  !       DQR,DTEMP: 大気海洋間の比湿差、温度差
+  !       ES : 飽和水蒸気圧 (hPa) (!! MKS !!) Saturated water vapor pressure
+  !       QS : 海面における飽和比湿 (g/kg) Saturated specific humidity at sea level
+  !       WV : 海上風速 (cm/s) offshore wind speed
+  !       CDN,CEN: バルク係数（無次元）Bulk coefficient (dimensionless)
+  !       DQR,DTEMP: 大気海洋間の比湿差、温度差 Specific humidity difference and temperature difference between atmosphere and ocean
   !
   !----------------------------------------------------------------------
 
