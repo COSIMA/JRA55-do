@@ -11,37 +11,37 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   implicit none
 
   integer(4), intent(in) :: num_data
-  real(8), intent(out) :: tmptrg(num_data), sphtrg(num_data)
-  real(8), intent(in)  :: sat(num_data) ! [degC]
-  real(8), intent(in)  :: qar(num_data)
-  real(8), intent(in)  :: wdv(num_data)
-  real(8), intent(in)  :: slp(num_data) ! [hPa]
-  real(8), intent(in)  :: tau(num_data)
+  real(8), intent(out) :: tmptrg(num_data), sphtrg(num_data) ! temperature and specific humidity at target altitude alt_target
+  real(8), intent(in)  :: sat(num_data) ! Observed Air Temperature at height altt [degC]
+  real(8), intent(in)  :: qar(num_data) ! specific humidity at height altq
+  real(8), intent(in)  :: wdv(num_data) ! Observed Wind Speed [cm/s] at height altu - not used, and call from shift_2m_to_10m_hybrid sets it to zero
+  real(8), intent(in)  :: slp(num_data) ! Observed sea level pressure [hPa]
+  real(8), intent(in)  :: tau(num_data) ! wind stress [Pa]
   real(8), intent(in)  :: sst(num_data) ! [degC]
   real(8), intent(in)  :: zrough(num_data) ! roughness length
   ! sensible heat and evaporation : negative for the "gain" on the atmospheric side
   real(8), intent(in)  :: sens(num_data), evap(num_data)
-  real(8), intent(in)  :: ice(num_data)
-  real(8), intent(in)  :: aexl(num_data)
-  real(8), intent(in)  :: altu, altt, altq
-  real(8), intent(in)  :: alt_target
-  real(8), intent(out) :: sphsrf(num_data)
+  real(8), intent(in)  :: ice(num_data) ! sea ice concentration (0 or 1, no fractional values)
+  real(8), intent(in)  :: aexl(num_data) ! land mask (1.0=ocean)
+  real(8), intent(in)  :: altu, altt, altq ! original altitudes of wind, temperature, specific humidity [m], defined in `namelist.shift_height_rough*`
+  real(8), intent(in)  :: alt_target       ! altitude to shift temperature & specific humidity to [m], defined in `namelist.shift_height_rough*`
+  real(8), intent(out) :: sphsrf(num_data) ! surface saturated specific humidity
 
   real(8) :: aexl_tmp(num_data)
 
   ! [cgs]
 
-  real(8), parameter :: grav = 981.0d0
+  real(8), parameter :: grav = 981.0d0 ! [cm/s2]
 
   ! ...
 
-  real(8), parameter :: tab = 273.15d0
+  real(8), parameter :: tab = 273.15d0 ! 0 degC expressed in Kelvin
 
   ! [MKS]
 
   real(8), parameter :: grav_mks = grav * 1.0d-2
-  real(8), parameter :: cpa_mks = 1004.67d0 ! specific heat of air (J/Kg/K)
-  real(8), parameter :: gasr = 287.04d0
+  real(8), parameter :: cpa_mks = 1004.67d0 ! specific heat of dry air at constant pressure [J/Kg/K]
+  real(8), parameter :: gasr = 287.04d0 ! gas constant of dry air [J/kg/K]
 
   real(8), parameter :: sphmin = 5.0d-5 ! minimum of specific humidity
 
@@ -75,7 +75,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   real(8) :: cd_rt
   real(8) :: wv
   !
-  real(8), parameter :: karman = 0.4    ! vor Karman constant
+  real(8), parameter :: karman = 0.4    ! von Karman constant
   real(8) :: stab
   !
   real(8) :: ustar, tstar, qstar, bstar
@@ -127,7 +127,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
     satmos = sat(m) + tab
     tssurf = sst(m)
 
-    ! calculcate surface saturated specific humidity
+    ! calculate surface saturated specific humidity
 
     if (ice(m) == 0.0d0) then
       es = 9.8d-1 * 6.1078d0 * 1.0d1**(7.5d0 * tssurf / (2.373d2 + tssurf))
@@ -142,7 +142,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
 
     if (aexl_tmp(m) == 1.0d0) then ! ocean
 
-      dtemp = tssurf + tab - satmos
+      dtemp = tssurf + tab - satmos ! SST - SAT
       dqr = qs - qatmos
 
       tmptrg(m) = tssurf - dtemp * log(alt_target / zrough(m)) / log(altt / zrough(m))
@@ -153,10 +153,17 @@ subroutine bulk_shift(tmptrg,sphtrg, &
       tv = satmos * (1.0d0 + 0.6078d0 * qatmos)              ! virtual temperature
       rhoair = (slpres * 1.0d2) / gasr / tv
 
+! L-Y is:
+! Large, W. G. and Yeager, S. (2004).
+! Diurnal to decadal global forcing for ocean and sea-ice models: The data sets and flux climatologies.
+! Technical Note NCAR/TN-460+STR, NCAR.
+! http://dx.doi.org/10.5065/D6KK98Q6
+
       ustar = sqrt(tau(m)/rhoair)                          ! L-Y eqn. 7a
       tstar = sens(m) / rhoair / cpa_mks / ustar           ! L-Y eqn. 7b
       qstar = evap(m) / rhoair / ustar                     ! L-Y eqn. 7c
 
+!  VVVVVVVVV the code below is unused VVVVVVVVV
       bstar = grav_mks * &
            & ( tstar / tv + qstar / (qatmos + 1.0d0 / 0.6078d0))
       !
@@ -164,7 +171,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
       !
       zetau = karman * bstar * altu / (ustar * ustar)      ! L-Y eqn. 8a
       zetau = sign(min(abs(zetau),10.d0),zetau)            ! undocumented NCAR
-      x2 = sqrt(abs(1.0d0 - 16.0d0 * zetau))               ! L-Y eqn. 8b
+      x2 = sqrt(abs(1.0d0 - 16.0d0 * zetau))               ! L-Y eqn. 8b (squared)
       x2 = max(x2,1.0d0)                                   ! undocumented NCAR
       x = sqrt(x2)
       if (zetau > 0.0d0) then
@@ -181,7 +188,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
       !
       zetat = karman * bstar * altt / (ustar * ustar)      ! L-Y eqn. 8a
       zetat = sign(min(abs(zetat),10.d0),zetat)            ! undocumented NCAR
-      x2 = sqrt(abs(1.0d0 - 16.0d0 * zetat))               ! L-Y eqn. 8b
+      x2 = sqrt(abs(1.0d0 - 16.0d0 * zetat))               ! L-Y eqn. 8b (squared)
       x2 = max(x2,1.0d0)                                   ! undocumented NCAR
       x = sqrt(x2)
       if (zetat > 0.0d0) then
@@ -198,7 +205,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
       !
       zetaq = karman * bstar * altq / (ustar * ustar)      ! L-Y eqn. 8a
       zetaq = sign(min(abs(zetaq),10.d0),zetaq)            ! undocumented NCAR
-      x2 = sqrt(abs(1.0d0 - 16.0d0 * zetaq))               ! L-Y eqn. 8b
+      x2 = sqrt(abs(1.0d0 - 16.0d0 * zetaq))               ! L-Y eqn. 8b (squared)
       x2 = max(x2,1.0d0)                                   ! undocumented NCAR
       x = sqrt(x2)
       if (zetaq > 0.0d0) then
@@ -215,7 +222,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
       !
       zetatrg = karman * bstar * alt_target / (ustar * ustar)   ! L-Y eqn. 8a
       zetatrg = sign(min(abs(zetatrg),10.d0),zetatrg)           ! undocumented NCAR
-      x2 = sqrt(abs(1.0d0 - 16.0d0 * zetatrg))                  ! L-Y eqn. 8b
+      x2 = sqrt(abs(1.0d0 - 16.0d0 * zetatrg))                  ! L-Y eqn. 8b (squared)
       x2 = max(x2,1.0d0)                                        ! undocumented NCAR
       x = sqrt(x2)
       if (zetatrg > 0.0d0) then
@@ -228,10 +235,12 @@ subroutine bulk_shift(tmptrg,sphtrg, &
         psi_htrg = 2.0d0 * log((1.0d0 + x2) / 2.0d0)            ! L-Y eqn. 8e
       end if
 
-      ! neglect stability
+!  ^^^^^^^^^ the code above is unused ^^^^^^^^^
 
-      tmptrg(m) = satmos - tab - tstar * (log(altt / alt_target)) / karman ! L-Y eqn. 9b
-      sphtrg(m) = qatmos - qstar * (log(altq / alt_target)) / karman ! L-Y eqn. 9c
+      ! neglect stability: set psi_* to zero in L-Y eqn. 9bc
+
+      tmptrg(m) = satmos - tab - tstar * (log(altt / alt_target)) / karman ! L-Y eqn. 9b, neglecting psi_h terms
+      sphtrg(m) = qatmos - qstar * (log(altq / alt_target)) / karman ! L-Y eqn. 9c, neglecting psi_h terms
  
       !tmptrg(m) = satmos - tab - tstar * &
       !     & (log(altt / alt_target) + psi_htrg - psi_ht) / karman ! L-Y eqn. 9b
