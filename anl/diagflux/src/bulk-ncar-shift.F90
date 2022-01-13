@@ -50,8 +50,8 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   real(8), intent(in)  :: alt_target
   real(8), intent(in)  :: sphmin
 
-  !   cpa  : 大気比熱 (erg/g/K)=(cm^2/s^2/K) (J/Kg/K)での値の10000倍
-  !   rhoa : 大気密度 (g/cm^3)  (Kg/m^3)での値の 0.001 倍
+  !   cpa  : 大気比熱 (erg/g/K)=(cm^2/s^2/K) (J/Kg/K)での値の10000倍 air specific heat (erg / g / K) = (cm ^ 2 / s ^ 2 / K); (J / Kg / K) 10000 times the value
+  !   rhoa : 大気密度 (g/cm^3)  (Kg/m^3)での値の 0.001 倍 air density (g/cm^3); (kg/m^3) is 0.001 times the value
 
   ! [cgs]
 
@@ -60,8 +60,8 @@ subroutine bulk_shift(tmptrg,sphtrg, &
 
   ! ...
 
-  !   cpa  : 大気比熱 (erg/g/K)=(cm^2/s^2/K) (J/Kg/K)での値の10000倍
-  !   rhoa : 大気密度 (g/cm^3)  (Kg/m^3)での値の 0.001 倍
+  !   cpa  : 大気比熱 (erg/g/K)=(cm^2/s^2/K) (J/Kg/K)での値の10000倍 air specific heat (erg / g / K) = (cm ^ 2 / s ^ 2 / K); (J / Kg / K) 10000 times the value
+  !   rhoa : 大気密度 (g/cm^3)  (Kg/m^3)での値の 0.001 倍 air density (g/cm^3); (kg/m^3) is 0.001 times the value
 
   real(8), parameter :: rhoa = 1.22d0  ! L-Y
   real(8), parameter :: tab = 273.15d0
@@ -78,17 +78,17 @@ subroutine bulk_shift(tmptrg,sphtrg, &
 
   ! [MKS]
 
-  real(8), parameter :: rhoa_mks = rhoa     ! 大気密度 (kg/m^3)
+  real(8), parameter :: rhoa_mks = rhoa     ! 大気密度 (kg/m^3) air density
   real(8), parameter :: ro0mks = ro * 1.d3
   real(8), parameter :: grav_mks = grav * 1.0d-2
-!  real(8), parameter :: cpa_mks = cpa ! 大気比熱 (J/Kg/K)
+!  real(8), parameter :: cpa_mks = cpa ! 大気比熱 (J/Kg/K) air specific heat
   real(8), parameter :: gasr = 287.04d0
 
-  real(8), parameter :: wvmin = 0.3d0 ! 海上風速の下限(m/s)
+  real(8), parameter :: wvmin = 0.3d0 ! 海上風速の下限(m/s) Lower limit of sea wind speed
   real(8), save :: eps_air   ! = 0.62197
   real(8), save :: tvq_air   ! = 0.6078
 
-  !J 海氷上の飽和蒸気圧を求めるために必要なパラメータ
+  !J 海氷上の飽和蒸気圧を求めるために必要なパラメータ Parameters required to determine saturated vapor pressure on sea ice
 
   ! Gill (1982) Appendix 4
   real(8), parameter :: agill1 = 0.7859d0, agill2 = 0.03477d0, agill3 = 0.00412d0 ! saturation vapor pressure
@@ -104,9 +104,9 @@ subroutine bulk_shift(tmptrg,sphtrg, &
 !  real(8), parameter :: ewa = 0.62197d0    !Molecular Weight Ratio Water/DryAir
 !  real(8), parameter :: temp_freeze = -2.0d0
 
-  !     変数
+  !     変数 variable
 
-  !   sll: 水の気化潜熱 (J/Kg)
+  !   sll: 水の気化潜熱 (J/Kg) Enthalpy of vaporization latent heat of water
 
   real(8) :: sll, es, qs
   real(8) :: ewp1, ewp2
@@ -142,22 +142,22 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   !
   real(8) :: x, xx, x2, tv
   !
-  ! 入力（単位に注意！  用意するデータの単位を変更するか、
-  !                     このサブルーチンで変更すること）
+  ! 入力（単位に注意！  用意するデータの単位を変更するか、Input (Be careful of the unit! Change the unit of the prepared data,
+  !                     このサブルーチンで変更すること）or change it with this subroutine)
   !     TBL     :  Model SST [degC]
   !     SAT,SATA:  Observed Air Temperature [degC]
   !     DWT,DWTA:  Observed Specific Humidity [kg/kg]
   !     WDV,WDVA:  Observed Wind Speed [m/s]
   !     SLP,SLPA:  Observed sea level pressure [hPa]
-  ! 出力
-  !     QSN     :  Sensible Heat Flux [g/s3] （W/m2での1000倍の値）
-  !     QLA     :  Latent Heat Flux   [g/s3] （W/m2での1000倍の値）
+  ! 出力 output
+  !     QSN     :  Sensible Heat Flux [g/s3] （W/m2での1000倍の値）(1000 times the value in W / m2)
+  !     QLA     :  Latent Heat Flux   [g/s3] （W/m2での1000倍の値）(1000 times the value in W / m2)
   !
-  !       ES : 飽和水蒸気圧 (hPa) (!! MKS !!)
-  !       QS : 海面における飽和比湿 (g/kg)
-  !       WV : 海上風速 (cm/s)
-  !       CDN,CEN: バルク係数（無次元）
-  !       DQR,DTEMP: 大気海洋間の比湿差、温度差
+  !       ES : 飽和水蒸気圧 (hPa) (!! MKS !!) Saturated water vapor pressure
+  !       QS : 海面における飽和比湿 (g/kg) Saturated specific humidity at sea level
+  !       WV : 海上風速 (cm/s) offshore wind speed
+  !       CDN,CEN: バルク係数（無次元）Bulk coefficient (dimensionless)
+  !       DQR,DTEMP: 大気海洋間の比湿差、温度差 Specific humidity difference and temperature difference between atmosphere and ocean
   !
 #ifdef OGCM_CALHEIGHT
   ! this is for GSM
@@ -180,7 +180,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   real(8) :: test, cdn_prv
 #endif /* OGCM_BULKITER */
   !
-  !  作業用変数
+  !  作業用変数 Working variables
   !
   integer(4) :: i, j
   real(8)            :: hl1, hl2
@@ -241,7 +241,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
         tssurf = sst(i,j)
         dtemp = tssurf + tab - satmos
         !
-        !     海面における比湿、飽和比湿の計算
+        !     海面における比湿、飽和比湿の計算 Calculation of specific humidity and saturated specific humidity on the sea surface
         !
         sll = cgill1 + cgill2 * tssurf
 #ifdef OGCM_LYCOEF
