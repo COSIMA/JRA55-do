@@ -1,7 +1,10 @@
 ! -*-F90-*-
-!------------------------ bulk-ncar-shift.F90 ----------------------------
+!------------------------ bulk_shift_zrough.F90 ----------------------------
 ! Information:
 !   Shift 2m temperature and specific humidity to those at 10m.
+! This was a test of shifting the raw JRA-55 data using the roughness length provided as part of JRA-55 product.
+! This was not used for the published JRA55-do.
+! JRA55-do used a different version of bulk_shift defined in JRA55-do/anl/diagflux/src/bulk-ncar-shift.F90
 !
 subroutine bulk_shift(tmptrg,sphtrg, &
      & sat,qar,wdv,tau,slp,sst,zrough,sphsrf,&
@@ -22,7 +25,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   ! sensible heat and evaporation : negative for the "gain" on the atmospheric side
   real(8), intent(in)  :: sens(num_data), evap(num_data)
   real(8), intent(in)  :: ice(num_data) ! sea ice concentration (0 or 1, no fractional values)
-  real(8), intent(in)  :: aexl(num_data) ! land mask (1.0=ocean)
+  real(8), intent(in)  :: aexl(num_data) ! land-sea mask (0:land, 1:sea)
   real(8), intent(in)  :: altu, altt, altq ! original altitudes of wind, temperature, specific humidity [m], defined in `namelist.shift_height_rough*`
   real(8), intent(in)  :: alt_target       ! altitude to shift temperature & specific humidity to [m], defined in `namelist.shift_height_rough*`
   real(8), intent(out) :: sphsrf(num_data) ! surface saturated specific humidity
@@ -46,10 +49,12 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   real(8), parameter :: sphmin = 5.0d-5 ! minimum of specific humidity
 
   ! parameters to calculate saturation water vapor presure
+  ! See G82 appendix 4.2
+  ! Gill, Adrian E. (1982). Atmosphere-Ocean Dynamics, volume 30 of International Geophysics. Academic Press, San Diego, 1st edition.
 
-  real(8), parameter :: ali1=0.7859d0, ali2=0.03477d0, ali3=0.00412d0, ali4=1.0d0
-  real(8), parameter :: bli1=1.d-6, bli2=4.5d0, bli3=0.0006d0
-  real(8), parameter :: cli1=2.839d6, cli2=3.6d0, cli3=35.0d0
+  real(8), parameter :: ali1=0.7859d0, ali2=0.03477d0, ali3=0.00412d0, ali4=1.0d0 ! G82 eqn. A4.5
+  real(8), parameter :: bli1=1.d-6, bli2=4.5d0, bli3=0.0006d0 ! G82 eqn. A4.7
+  real(8), parameter :: cli1=2.839d6, cli2=3.6d0, cli3=35.0d0 ! not used
   real(8), parameter :: ewa = 0.62197d0    !Molecular Weight Ratio Water/DryAir
 
   ! work variables
@@ -128,13 +133,13 @@ subroutine bulk_shift(tmptrg,sphtrg, &
     tssurf = sst(m)
 
     ! calculate surface saturated specific humidity
-
-    if (ice(m) == 0.0d0) then
-      es = 9.8d-1 * 6.1078d0 * 1.0d1**(7.5d0 * tssurf / (2.373d2 + tssurf))
-      qs = ewa * es / (slpres - 3.78d-1 * es)
-    else
-      ewp1 = 10.D0**((ali1 + ali2 * tssurf) / (1.0d0 + ali3 * tssurf))  ! [hPa]
-      ewp2 = ewp1 * (1.0d0 + bli1 * slpres * (bli2 + bli3 * tssurf**2)) ! [hPa]
+    if (ice(m) == 0.0d0) then ! ice free - POSSIBLE BUG? uses Tetens formula, rather than G82 as stated in Tsujino et al 2018 sec B1.1
+      es = 9.8d-1 * 6.1078d0 * 1.0d1**(7.5d0 * tssurf / (2.373d2 + tssurf)) ! Tetens formula for saturation vapur pressure over seawater (in base 10 and hPa) - see Buck (1981) eq 3 and table 2 https://doi.org/10.1175/1520-0450(1981)020%3C1527:NEFCVP%3E2.0.CO;2 and G82 sec A4.2e
+      qs = ewa * es / (slpres - 3.78d-1 * es) ! (1.0d0 - ewa) = 3.7803d-1 ~= 3.78d-1 ie this ~matches last line of else clause
+    else ! ice
+      ewp1 = 10.D0**((ali1 + ali2 * tssurf) / (1.0d0 + ali3 * tssurf))  ! [hPa]  G82 eqn. A4.5
+! POSSIBLE BUG? ewp1 is correct for fresh water, but is missing a multiplicative factor for ice (G82 eqn. A4.8; Tsujino et al 2018 sec B1.1)
+      ewp2 = ewp1 * (1.0d0 + bli1 * slpres * (bli2 + bli3 * tssurf**2)) ! [hPa]  G82 eqn. A4.6, A4.7
       qs = ewa * ewp2 / (slpres - (1.0d0 - ewa) * ewp2)
     end if
 

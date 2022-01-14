@@ -1,18 +1,19 @@
 ! -*-F90-*-
 !------------------------ bulk-ncar-shift.F90 ----------------------------
+! Also see similar code (not used for JRA55-do) in JRA55-do/extract_jra55/src/bulk_shift_zrough.F90
 !   Subroutine bulk
 !
 !     Calculate Latent/Sensible heat flux based on 
 !          the bulk formula by Large and Yeager (2004).
 !
 !   About CPP directives
-!     - LYCOEF    : Compute properties of moist air based on Large and Yeager (2004;2009)
+!     - LYCOEF    : Compute properties of moist air based on Large and Yeager (2004;2009) - not used in any Makefiles
 !     - CALHEIGHT : Estimate the height of the bottom level (where surface variables are defined)
-!                    of JMA global spectral models (This option will not be usually used.)
+!                    of JMA global spectral models (This option will not be usually used.) - not used in any Makefiles
 !
 !   Input:
-!     us   : zonal wind speed (m s-1)
-!     vs   : meridional wind speed (m s-1)
+!     us   : zonal wind speed (m s-1) - not used
+!     vs   : meridional wind speed (m s-1) - not used
 !     sat  : Surface air temperature (degree Celsius)
 !     qar  : Specific humidity of surface air (kg kg-1)
 !     wdv  : Scalar wind speed (m s-1)
@@ -27,11 +28,11 @@
 !   Output:
 !     tmptrg : Height shifted air temperature (degree Celsius)
 !     sphtrg : Height shifted specific humidity (kg kg-1)
-!     tu   : Air temperature at the height where wind is observed (degree Celsius)
-!     qu   : Specific humidity at the height where wind is observed (kg kg-1)
-!     dtu  : Difference of temperature between air temperature and sea surface temperature (degree Celsius)
+!     tu   : Air temperature at the height where wind is observed (degree Celsius) - IGNORE comment: variable doesn't exist
+!     qu   : Specific humidity at the height where wind is observed (kg kg-1) - IGNORE comment: variable doesn't exist
+!     dtu  : Difference of temperature between air temperature and sea surface temperature (degree Celsius) - IGNORE comment: variable doesn't exist
 !     dqu  : Difference of specific humidity between air specific humidity
-!          :  and saturation specific humidity at the sea surface  (kg kg-1)
+!          :  and saturation specific humidity at the sea surface  (kg kg-1) - IGNORE comment: variable doesn't exist
 !
 subroutine bulk_shift(tmptrg,sphtrg, &
      & us,vs,sat,qar,wdv,slp,sst,ice,&
@@ -63,6 +64,12 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   !   cpa  : 大気比熱 (erg/g/K)=(cm^2/s^2/K) (J/Kg/K)での値の10000倍 air specific heat (erg / g / K) = (cm ^ 2 / s ^ 2 / K); (J / Kg / K) 10000 times the value
   !   rhoa : 大気密度 (g/cm^3)  (Kg/m^3)での値の 0.001 倍 air density (g/cm^3); (kg/m^3) is 0.001 times the value
 
+  ! L-Y is:
+  ! Large, W. G. and Yeager, S. (2004).
+  ! Diurnal to decadal global forcing for ocean and sea-ice models: The data sets and flux climatologies.
+  ! Technical Note NCAR/TN-460+STR, NCAR.
+  ! http://dx.doi.org/10.5065/D6KK98Q6
+
   real(8), parameter :: rhoa = 1.22d0  ! L-Y
   real(8), parameter :: tab = 273.15d0
 #ifdef OGCM_LYCOEF
@@ -74,7 +81,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   real(8) :: cpa
 
   real(8), parameter :: mwwater = 18.016d0  ! molecular weight of water vapor
-  real(8), parameter :: mwair = 28.966d0    ! modecular weight of air
+  real(8), parameter :: mwair = 28.966d0    ! molecular weight of air
 
   ! [MKS]
 
@@ -90,13 +97,14 @@ subroutine bulk_shift(tmptrg,sphtrg, &
 
   !J 海氷上の飽和蒸気圧を求めるために必要なパラメータ Parameters required to determine saturated vapor pressure on sea ice
 
-  ! Gill (1982) Appendix 4
-  real(8), parameter :: agill1 = 0.7859d0, agill2 = 0.03477d0, agill3 = 0.00412d0 ! saturation vapor pressure
+  ! G82 is Gill (1982) Appendix 4
+  ! Gill, Adrian E. (1982). Atmosphere-Ocean Dynamics, volume 30 of International Geophysics. Academic Press, San Diego, 1st edition.
+  real(8), parameter :: agill1 = 0.7859d0, agill2 = 0.03477d0, agill3 = 0.00412d0 ! saturation vapor pressure; G82 eqn. A4.5
   real(8), parameter :: bgill0 = 0.98d0 ! 2 % reduction for saturation vapor pressure over sea water
-  real(8), parameter :: bgill1 = 1.d-6, bgill2 = 4.5d0, bgill3 = 0.0006d0 ! correction of vapor pressure
+  real(8), parameter :: bgill1 = 1.d-6, bgill2 = 4.5d0, bgill3 = 0.0006d0 ! correction of vapor pressure; G82 eqn. A4.7
   real(8), parameter :: cgill1 = 2.5008d6, cgill2 = -2.3d3   ! for latent heat of vaporization
   real(8), parameter :: dgill1 = 1004.6d0, dgill2 = 0.8735d0 ! for specific heat (Gill 1982, P.43)
-  real(8), parameter :: igill1 = 0.00422d0
+  real(8), parameter :: igill1 = 0.00422d0 ! G82 eqn. A4.8
 
 !  real(8), parameter :: ali1=0.7859d0, ali2=0.03477d0, ali3=0.00412d0, ali4=1.0d0
 !  real(8), parameter :: bli1=1.d-6, bli2=4.5d0, bli3=0.0006d0
@@ -129,7 +137,7 @@ subroutine bulk_shift(tmptrg,sphtrg, &
   real(8) :: cd_rt
   real(8) :: wv
   !
-  real(8), parameter :: karman = 0.4    ! vor Karman constant
+  real(8), parameter :: karman = 0.4    ! von Karman constant
   real(8) :: zrough                     ! roughness length
   real(8) :: stab
   !
@@ -248,32 +256,33 @@ subroutine bulk_shift(tmptrg,sphtrg, &
         rhoair = (slpres * 1.0d2)/gasr/satmos/(1.0d0+tvq_air*qatmos)
         if (ice(i,j) == 0.0d0) then
           ! ice free
-          if (atexl(i,j) == 1.0d0) then
-            qs = 0.98d0 * 6.40380d5 * exp(-5107.4d0 / (tssurf + tab)) / rhoair
-          else
-            qs = 6.40380d5 * exp(-5107.4d0 / (tssurf + tab)) / rhoair
+          if (atexl(i,j) == 1.0d0) then ! ocean
+            qs = 0.98d0 * 6.40380d5 * exp(-5107.4d0 / (tssurf + tab)) / rhoair ! L-Y eqn. 5 for over seawater
+          else ! land
+            qs = 6.40380d5 * exp(-5107.4d0 / (tssurf + tab)) / rhoair ! L-Y eqn. 5
           end if
         else
           ! ice
-          qs = 11637800.0d0 * exp(-5897.8d0 / (tssurf + tab)) / rhoair
+          qs = 11637800.0d0 * exp(-5897.8d0 / (tssurf + tab)) / rhoair ! L-Y eqn. 5 (for ice, with coeffs from L-Y p16)
         end if
 #else /* OGCM_LYCOEF */
         !!!!!es = 9.8d-1 * 6.1078d0 * 1.0d1**(7.5d0 * tssurf / (2.373d2 + tssurf))
         !!!!!qs = 6.22d-1 * es / (slpres - 3.78d-1 * es)
+        ! use Gill (1982), appendix A4.2
         if (ice(i,j) == 0.0d0) then
           ! ice free
-          hl2 = (agill1 + agill2 * tssurf) / (1.0d0 + agill3 * tssurf)
+          hl2 = (agill1 + agill2 * tssurf) / (1.0d0 + agill3 * tssurf)  ! G82 eqn. A4.5
           hl1 = 10.D0 ** hl2
-          if (atexl(i,j) == 1.0d0) then
-            es = hl1 * bgill0 * (1.0d0 + bgill1 * slpres * (bgill2 + bgill3 * tssurf**2)) ! [hPa]
-          else
-            es = hl1 * (1.0d0 + bgill1 * slpres * (bgill2 + bgill3 * tssurf**2)) ! [hPa]
+          if (atexl(i,j) == 1.0d0) then ! ocean
+            es = hl1 * bgill0 * (1.0d0 + bgill1 * slpres * (bgill2 + bgill3 * tssurf**2)) ! [hPa]  G82 eqn. A4.6, A4.7 & sec A4.2e
+          else ! land
+            es = hl1 * (1.0d0 + bgill1 * slpres * (bgill2 + bgill3 * tssurf**2)) ! [hPa]  G82 eqn. A4.6, A4.7
           end if
         else
           ! ice
-          hl2 = (agill1 + agill2 * tssurf) / (1.0d0 + agill3 * tssurf) + igill1 * tssurf
+          hl2 = (agill1 + agill2 * tssurf) / (1.0d0 + agill3 * tssurf) + igill1 * tssurf  ! G82 eqn. A4.5, A4.8
           hl1 = 10.D0 ** hl2
-          es = hl1 * (1.0d0 + bgill1 * slpres * (bgill2 + bgill3 * tssurf**2)) ! [hPa]
+          es = hl1 * (1.0d0 + bgill1 * slpres * (bgill2 + bgill3 * tssurf**2)) ! [hPa]  G82 eqn. A4.6, A4.7
         end if
         qs = eps_air * es / (slpres - (1.0d0 - eps_air) * es)
 #endif /* OGCM_LYCOEF */
